@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A short interactive story about family photographs and time.">
+  <title>The Picture Never Changed</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header>
+    <div class="brand">The Picture Never Changed</div>
+    <div class="settings">
+      <button id="sound" aria-pressed="false">Sound off</button>
+      <button id="motion">Motion</button>
+      <button id="restart" hidden>Restart</button>
+    </div>
+  </header>
+
+  <main id="game"></main>
+
+  <dialog id="reset">
+    <p>Start over? This clears the photographs from this playthrough.</p>
+    <form method="dialog" class="actions">
+      <button value="cancel" autofocus>Keep playing</button>
+      <button value="restart" class="primary">Start over</button>
+    </form>
+  </dialog>
+
+  <script src="./rooms.js"></script>
+  <script src="./game.js"></script>
+</body>
+</html>
