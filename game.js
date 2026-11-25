@@ -17,6 +17,8 @@ world.width = width;
 world.height = height;
 const rooms = createRoomArt(world.getContext('2d'));
 let display;
+let pointerGoal = null;
+let lastPaint = 0;
 const moments = [
   {name:'Dinner table', x:143, y:235, captions:{9:'Why we always gotta take pictures?',17:'We used to do this a lot.',25:"I didn't know how much I'd miss this."}},
   {name:'Funny face', x:356, y:275, captions:{9:"Bro can't ever be serious.",17:'They were always doing something.',25:'I wonder when we stopped acting like this.'}},
@@ -37,7 +39,7 @@ function begin() {
 }
 function go(next,nextAge=age) {
   chapter = next; age = nextAge; readingAge = age; selected = 0;
-  viewed = new Set(); notice = ''; aim = {x:143,y:235}; render();
+  viewed = new Set(); notice = ''; pointerGoal = null; aim = {x:143,y:235}; render();
   (game.querySelector('h1,h2') || game).focus({preventScroll:true});
   window.scrollTo(0,0);
 }
@@ -59,6 +61,7 @@ function openAlbum() {go('album'); viewed.add(0); render(); document.querySelect
 function render(focusId) {
   const filmScroll = focusId ? game.querySelector('.film')?.scrollTop : 0;
   document.body.dataset.age = age;
+  document.body.dataset.chapter = chapter;
   restart.hidden = chapter === 'title';
   switch(chapter) {
     case 'title':
@@ -70,7 +73,28 @@ function render(focusId) {
     case 'camera':
     case 'present': {
       const here = chapter==='present';
-      game.innerHTML = `<div class="stage-title">${heading(here?'Age 25 · The present':'Chapter 1 · Age 9',here?'One more':'Just another day')}<p class="muted">${here?'There’s still a moment happening right now.':'Someone hands you the camera. Outside, the last of the daylight is still on the steps.'}</p></div><div class="layout camera-layout">${scene(true)}<section><p class="muted">${here?'Frame the rain, the album, or any corner of the room.':demo?'Take any photo. Capture one family moment to continue.':'Photograph anything in the room. Capture three different family moments to continue.'}</p><div class="actions">${btn('shoot','Take picture','primary')}${!here&&capturedMoments()>=requiredPhotos?btn('leave','Go play outside'):''}</div>${here?'':`<p class="muted strip">Family moments found: ${capturedMoments()} · ${requiredPhotos} needed</p>`}<p class="muted strip">Mouse to aim and click to shoot. Touch to frame. Arrow keys to aim, Space to shoot.</p>${here?'':`<div class="moments strip">${moments.map((m,i)=>`<button data-moment="${i}">${m.name}${photos.some(p=>p.id===i)?' ✓':''}</button>`).join('')}</div>${film(photos)}`}<p id="notice" class="note" role="status">${notice}</p></section></div>`;
+      game.innerHTML = `
+        <div class="camera-stage">
+          ${scene(true)}
+          <section class="camera-controls" aria-label="Camera controls">
+            <div class="camera-heading">
+              ${heading(here?'Age 25 · The present':'Age 9',here?'One more':'Just another day')}
+            </div>
+            <div class="actions">
+              ${btn('shoot','Take picture','primary')}
+              ${!here && capturedMoments() >= requiredPhotos ? btn('leave','Go play outside') : ''}
+            </div>
+            <p class="muted strip camera-instructions">
+              ${here ? 'There’s still a moment happening right now.' : `Family moments found: ${capturedMoments()} · ${requiredPhotos} needed. Photograph anything in the room.`}
+            </p>
+            ${here ? '' : `<div class="moments strip">
+              ${moments.map((m,i) => `<button data-moment="${i}">${m.name}${photos.some(p => p.id === i) ? ' ✓' : ''}</button>`).join('')}
+            </div>`}
+            <p class="muted strip camera-instructions">Mouse to aim and click. Touch to frame. Arrow keys to aim, Space to shoot.</p>
+            ${here ? '' : film(photos)}
+            <p id="notice" class="note" role="status">${notice}</p>
+          </section>
+        </div>`;
       break;
     }
     case 'interlude':
@@ -101,8 +125,16 @@ function render(focusId) {
   if (photoList && filmScroll) photoList.scrollTop = filmScroll;
   if (focusId) game.querySelector(focusId)?.focus({preventScroll:true});
 }
+function clampAim(x, y) {
+  return {
+    x: clamp(x, frameWidth / 2, width - frameWidth / 2),
+    y: clamp(y, frameHeight / 2, height - frameHeight / 2)
+  };
+}
 function aimAt(x,y) {
-  aim = {x:Math.round(clamp(x,frameWidth/2,width-frameWidth/2)),y:Math.round(clamp(y,frameHeight/2,height-frameHeight/2))};
+  pointerGoal = null;
+  const target = clampAim(x, y);
+  aim = {x: Math.round(target.x), y: Math.round(target.y)};
   draw(performance.now());
 }
 function subject() {
@@ -110,12 +142,21 @@ function subject() {
   return ranked[0].d<=1.15?ranked[0].id:-1;
 }
 function bindCamera(canvas) {
-  function place(e) {
-    const b=canvas.getBoundingClientRect();
-    aimAt((e.clientX-b.left)*width/b.width,(e.clientY-b.top)*height/b.height);
+  function point(e) {
+    const bounds = canvas.getBoundingClientRect();
+    return clampAim((e.clientX - bounds.left) * width / bounds.width,
+                    (e.clientY - bounds.top) * height / bounds.height);
   }
-  canvas.addEventListener('pointerdown',e=>{place(e);canvas.focus({preventScroll:true});});
-  canvas.addEventListener('pointermove',e=>{if(e.pointerType==='mouse'||e.buttons)place(e);});
+  canvas.addEventListener('pointerdown', e => {
+    const target = point(e);
+    if (e.pointerType !== 'mouse' || reduced) aimAt(target.x, target.y);
+    canvas.focus({preventScroll:true});
+  });
+  canvas.addEventListener('pointermove', e => {
+    const target = point(e);
+    if (e.pointerType === 'mouse' && !reduced) pointerGoal = target;
+    else if (e.pointerType === 'mouse' || e.buttons) aimAt(target.x, target.y);
+  });
   canvas.addEventListener('click',e=>{if(e.pointerType==='mouse')shoot(true);});
   canvas.addEventListener('keydown',e=>{
     const directions={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};
@@ -129,9 +170,10 @@ function shoot(fromCanvas=false) {
   const here=chapter==='present';
   const id=here?-1:subject();
   // Crop the room before the viewfinder overlay is drawn.
+  pointerGoal = null;
   const snapshot=document.createElement('canvas');
   snapshot.width=frameWidth; snapshot.height=frameHeight;
-  snapshot.getContext('2d').drawImage(world,aim.x-frameWidth/2,aim.y-frameHeight/2,frameWidth,frameHeight,0,0,frameWidth,frameHeight);
+  snapshot.getContext('2d').drawImage(world,Math.round(aim.x)-frameWidth/2,Math.round(aim.y)-frameHeight/2,frameWidth,frameHeight,0,0,frameWidth,frameHeight);
   const src=snapshot.toDataURL('image/png');
   shutter();
   if(here) {
@@ -208,7 +250,7 @@ function shutter() {
   gain.gain.setValueAtTime(.075,now);gain.gain.exponentialRampToValueAtTime(.001,now+.09);
   tone.connect(gain);gain.connect(master);tone.start(now);tone.stop(now+.1);
 }
-let lastPaint=0;
+
 function draw(now) {
   if(!display)return;
   const t=reduced?1:now/1000;
@@ -217,7 +259,7 @@ function draw(now) {
   const context=display.getContext('2d');
   context.drawImage(world,0,0);
   if(!display.classList.contains('camera'))return;
-  const x=aim.x-frameWidth/2,y=aim.y-frameHeight/2,r=x+frameWidth,b=y+frameHeight;
+  const x=Math.round(aim.x)-frameWidth/2,y=Math.round(aim.y)-frameHeight/2,r=x+frameWidth,b=y+frameHeight;
   context.fillStyle='#1a142b62';
   context.fillRect(0,0,width,y);context.fillRect(0,b,width,height-b);
   context.fillRect(0,y,x,frameHeight);context.fillRect(r,y,width-r,frameHeight);
@@ -230,7 +272,18 @@ function draw(now) {
   context.fillStyle='#fff0ceaa';context.fillRect(aim.x-5,aim.y,11,1);context.fillRect(aim.x,aim.y-5,1,11);
 }
 function loop(now) {
-  if(now-lastPaint>42){draw(now);lastPaint=now;}
   requestAnimationFrame(loop);
+  if (now - lastPaint < 15) return;
+  if (pointerGoal) {
+    const blend = reduced ? 1 : 1 - Math.exp(-(now - lastPaint) / 48);
+    aim.x += (pointerGoal.x - aim.x) * blend;
+    aim.y += (pointerGoal.y - aim.y) * blend;
+    if (Math.hypot(pointerGoal.x - aim.x, pointerGoal.y - aim.y) < .5) {
+      aim = {x: Math.round(pointerGoal.x), y: Math.round(pointerGoal.y)};
+      pointerGoal = null;
+    }
+  }
+  draw(now);
+  lastPaint = now;
 }
 syncMotion();begin();requestAnimationFrame(loop);
