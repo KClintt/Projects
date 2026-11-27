@@ -1,6 +1,21 @@
 'use strict';
 
-function createRoomArt(g) {
+function createRoomArt(context) {
+  let g = context;
+
+  function paintLayer(width, height, paint) {
+    const layer = document.createElement('canvas');
+    layer.width = width;
+    layer.height = height;
+    g = layer.getContext('2d');
+    try {
+      paint();
+    } finally {
+      g = context;
+    }
+    return layer;
+  }
+
   function rect(x,y,w,h,color) {g.fillStyle=color;g.fillRect(Math.round(x),Math.round(y),w,h);}
   function shape(color,...points) {
     g.fillStyle=color;g.beginPath();g.moveTo(...points[0]);
@@ -112,7 +127,7 @@ function createRoomArt(g) {
   }
 
   const paperGrain = makePaperGrain();
-  function childhoodBackdrop(t) {
+  const childhoodBackdrop = paintLayer(720, 400, () => {
     rect(0, 0, 720, 400, '#e0bd8e');
     paperPiece('#edcea3', [-4, 2], [254, -3], [247, 205], [0, 217]);
     paperPiece('#d7ad7d', [246, -3], [498, 2], [501, 217], [249, 211]);
@@ -121,7 +136,7 @@ function createRoomArt(g) {
     paperPiece('#cc9864', [-6, 253], [175, 249], [360, 258], [553, 251], [724, 255], [724, 289], [359, 294], [0, 287]);
     paperPiece('#ce9460', [-6, 332], [209, 329], [362, 338], [567, 333], [726, 336], [726, 372], [358, 379], [-6, 369]);
     paperPiece('#835544', [-4, 205], [251, 207], [494, 205], [725, 209], [725, 218], [475, 215], [243, 217], [-4, 214]);
-    windowArt(37,34,167,125,false,t);
+    windowArt(37,34,167,125,false,0);
     paperPiece('#edbd6966', [52,151], [191,152], [380,404], [115,404]);
 
     // The curtains are separate pieces so the folds have visible edges.
@@ -133,9 +148,17 @@ function createRoomArt(g) {
     paperPiece('#ddbf8c', [269,100], [310,97], [314,133], [272,138]);
     paperPiece('#f3dcb0', [274,105], [306,102], [309,129], [276,132]);
     shape('#bf6c4d',[280,118],[291,110],[302,116],[298,116],[299,124],[284,125],[283,118]);
-  }
+  });
+  // Blur the group once. The whole paper piece can still sway in the room.
+  const blurryGroup = paintLayer(128, 121, () => {
+    g.translate(-382, -88);
+    g.filter = 'blur(1.15px)';
+    person(404,133,{...family[3],size:.9,reach:true});
+    person(440,130,{...family[2],size:1.01});
+    person(473,138,{...family[1],silly:true,size:.88});
+  });
   function childhood(t) {
-    childhoodBackdrop(t);
+    g.drawImage(childhoodBackdrop, 0, 0);
     line('#74494a',2,[227,48],[285,61],[346,64],[402,60],[472,40]);
     ['#e8b86c','#808b76','#be7266','#e4ae79','#9a566a'].forEach((c,i)=>{
       const x=233+i*48,y=[50,59,64,62,51][i];paperPiece(c,[x,y],[x+23,y+4],[x+12,y+24]);
@@ -160,11 +183,7 @@ function createRoomArt(g) {
     oval(281,207,12,21,'#bc6a50');oval(497,208,12,21,'#bc6a50');
     rect(316,189,33,23,'#d8a574');rect(356,189,34,22,'#d5a777');
     const groupMove=Math.round(Math.sin(t*4)*6);
-    g.save();g.filter='blur(1.15px)';
-    person(404+groupMove,133,{...family[3],bob:bob(3),size:.9,reach:true});
-    person(440+groupMove,130,{...family[2],bob:bob(1),size:1.01});
-    person(473+groupMove,138,{...family[1],silly:true,bob:bob(6),size:.88});
-    g.restore();
+    g.drawImage(blurryGroup, 382 + groupMove, 88);
     person(354,275,{...family[0],silly:true,reach:true,bob:bob(2),size:1.11});
     line('#efd18d',2,[323,242],[316,235]);line('#efd18d',2,[380,242],[387,236]);
     oval(143,299,112,24,'#6d45475c');
