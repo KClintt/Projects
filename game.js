@@ -19,6 +19,7 @@ const rooms = createRoomArt(world.getContext('2d'));
 let display;
 let pointerGoal = null;
 let lastPaint = 0;
+let lastRoomPaint = -Infinity;
 const moments = [
   {name:'Dinner table', x:143, y:235, captions:{9:'Why we always gotta take pictures?',17:'We used to do this a lot.',25:"I didn't know how much I'd miss this."}},
   {name:'Funny face', x:356, y:275, captions:{9:"Bro can't ever be serious.",17:'They were always doing something.',25:'I wonder when we stopped acting like this.'}},
@@ -48,8 +49,16 @@ function heading(label,title) {return `<div class="eyebrow">${label}</div><h2 ta
 function scene(camera=false) {
   return `<div class="scene"><canvas width="720" height="400" class="${camera?'camera':''}" ${camera?'tabindex="0" aria-label="Camera viewfinder. Aim with arrow keys. Press Space to take a picture."':'role="img" aria-label="Illustrated room."'}></canvas></div>`;
 }
-function photo(p,caption) {
-  return `<figure class="photo"><img width="246" height="164" src="${p.src}" alt="${p.name} as framed by you"><figcaption>“${caption}”</figcaption></figure>`;
+function photo(p, caption, position, total) {
+  return `
+    <figure class="photo playback-display">
+      <div class="playback-status">
+        <span><span aria-hidden="true">▶</span> Playback</span>
+        <span aria-label="Photo ${position} of ${total}">${position} / ${total}</span>
+      </div>
+      <img width="246" height="164" src="${p.src}" alt="${p.name} as framed by you">
+      <figcaption>“${caption}”</figcaption>
+    </figure>`;
 }
 function film(list,active=-1) {
   return `<div class="film" aria-label="Album photos">${list.map((p,i)=>`<button data-photo="${i}" class="${i===active?'on ':''}${viewed.has(i)&&chapter==='album'?'seen':''}" aria-label="Photo ${i+1}, ${p.name}${viewed.has(i)&&chapter==='album'?', viewed':''}" aria-pressed="${i===active}"><img alt="" src="${p.src}"></button>`).join('')}</div>`;
@@ -65,7 +74,16 @@ function render(focusId) {
   restart.hidden = chapter === 'title';
   switch(chapter) {
     case 'title':
-      game.innerHTML = `<div class="layout intro"><section><div class="eyebrow">${demo?'Teacher demo · about 1 min':'A short photography game · 4–6 min'}</div><h1 tabindex="-1">The Picture Never Changed</h1><p class="muted">A family gathering, a borrowed camera, and the pictures you’ll find years later.</p>${btn('start',demo?'Play demo':'Begin story','primary')} <a class="download" href="${demo?'./index.html':'./demo.html'}">${demo?'Full game':'Play the short demo'}</a></section>${scene()}</div>`;
+      game.innerHTML = `
+        <section class="title-page">
+          ${scene()}
+          <h1 tabindex="-1">The Picture Never Changed</h1>
+          <p class="muted">${demo ? 'Short demo · About 1 minute' : 'A short game about looking back at family photos'}</p>
+          <div class="actions">
+            ${btn('start', demo ? 'Play demo' : 'Start game', 'primary')}
+            <a class="download" href="${demo ? './index.html' : './demo.html'}">${demo ? 'Full game' : 'Short demo'}</a>
+          </div>
+        </section>`;
       break;
     case 'opening':
       game.innerHTML = `<div class="layout">${scene()}<section>${heading('Age 9','One more picture')}<div class="dialogue" aria-live="polite"><div class="eyebrow">${introLine===1?'You':'From the living room'}</div><p class="quote">${opening[introLine]}</p></div>${btn('next',introLine===2?'Take the camera':'Continue','primary')}</section></div>`;
@@ -106,21 +124,21 @@ function render(focusId) {
     case 'album': {
       const p=photos[selected];
       const complete=viewed.size>=requiredPhotos;
-      game.innerHTML = `<div class="layout">${photo(p,p.captions[readingAge])}<section>${heading('The album · Age '+age,p.name)}<div class="tabs" aria-label="Caption age">${[9,17,25].filter(y=>y<=age).map(y=>`<button data-age="${y}" class="${y===readingAge?'on':''}" aria-pressed="${y===readingAge}">Age ${y}</button>`).join('')}</div>${film(photos,selected)}<p class="muted" role="status">${complete?(age===17?'“I don’t remember when things started feeling different.”':'You leave the album open. A car goes by, then the room is quiet again.'):`Look through three photographs · ${viewed.size} of ${requiredPhotos}`}</p>${complete?btn('next-age',age===17?'Eight years later':'Sit with the first picture','primary'):''}</section></div>`;
+      game.innerHTML = `<div class="layout playback">${photo(p,p.captions[readingAge],selected+1,photos.length)}<section>${heading('The album · Age '+age,p.name)}<div class="tabs" aria-label="Caption age">${[9,17,25].filter(y=>y<=age).map(y=>`<button data-age="${y}" class="${y===readingAge?'on':''}" aria-pressed="${y===readingAge}">Age ${y}</button>`).join('')}</div>${film(photos,selected)}<p class="muted" role="status">${complete?(age===17?'“I don’t remember when things started feeling different.”':'You leave the album open. A car goes by, then the room is quiet again.'):`Look through three photographs · ${viewed.size} of ${requiredPhotos}`}</p>${complete?btn('next-age',age===17?'Eight years later':'Sit with the first picture','primary'):''}</section></div>`;
       break;
     }
     case 'reflection':
-      game.innerHTML = `<div class="layout">${photo(photos[0],photos[0].captions[readingAge])}<section>${heading('The first photograph','The picture never changed.')}<p class="quote">But you did.</p><div class="tabs" aria-label="Caption age">${[9,17,25].map(y=>`<button data-age="${y}" class="${y===readingAge?'on':''}" aria-pressed="${y===readingAge}">Age ${y}</button>`).join('')}</div><p>So where did the beauty come from?</p><div class="choices">${interpretations.map(([label],i)=>`<button data-choice="${i}" class="${i===choice?'on':''}" aria-pressed="${i===choice}">${label}</button>`).join('')}</div>${choice===null?'':`<p role="status" class="quote">${interpretations[choice][1]}</p>${btn('present','Pick up the camera','primary')}`}</section></div>`;
+      game.innerHTML = `<div class="layout playback">${photo(photos[0],photos[0].captions[readingAge],1,photos.length)}<section>${heading('The first photograph','The picture never changed.')}<p class="quote">But you did.</p><div class="tabs" aria-label="Caption age">${[9,17,25].map(y=>`<button data-age="${y}" class="${y===readingAge?'on':''}" aria-pressed="${y===readingAge}">Age ${y}</button>`).join('')}</div><p>So where did the beauty come from?</p><div class="choices">${interpretations.map(([label],i)=>`<button data-choice="${i}" class="${i===choice?'on':''}" aria-pressed="${i===choice}">${label}</button>`).join('')}</div>${choice===null?'':`<p role="status" class="quote">${interpretations[choice][1]}</p>${btn('present','Pick up the camera','primary')}`}</section></div>`;
       break;
     case 'ending': {
       const all=[...photos,present],p=all[selected];
-      game.innerHTML = `<div class="layout">${photo(p,p.captions[25])}<section>${heading('The album · The present','The Picture Never Changed')}<p class="quote">Maybe we don’t always know what we’re capturing.</p>${film(all,selected)}<div class="actions"><a class="download" href="${p.src}" download="picture-${selected+1}.png">Save this photo</a>${btn('replay','Play again')}${demo?'<a class="download" href="./index.html">Play the full game</a>':''}</div><p class="muted strip">Made for a english project</p></section></div>`;
+      game.innerHTML = `<div class="layout playback">${photo(p,p.captions[25],selected+1,all.length)}<section>${heading('The album · The present','The Picture Never Changed')}<p class="quote">Maybe we don’t always know what we’re capturing.</p>${film(all,selected)}<div class="actions"><a class="download" href="${p.src}" download="picture-${selected+1}.png">Save this photo</a>${btn('replay','Play again')}${demo?'<a class="download" href="./index.html">Play the full game</a>':''}</div><p class="muted strip">Made for a english project</p></section></div>`;
       break;
     }
   }
   display = game.querySelector('canvas');
   if (display && display.classList.contains('camera')) bindCamera(display);
-  if (display) draw(performance.now());
+  if (display) draw(performance.now(), true);
   const photoList = game.querySelector('.film');
   if (photoList && filmScroll) photoList.scrollTop = filmScroll;
   if (focusId) game.querySelector(focusId)?.focus({preventScroll:true});
@@ -188,7 +206,7 @@ function shoot(fromCanvas=false) {
   notice=`“${m.captions[9]}”`;
   render(fromCanvas?'canvas':'#shoot');
   const photoList = game.querySelector('.film');
-  photoList.scrollTop = photoList.scrollHeight;
+  photoList.scrollLeft = photoList.scrollWidth;
   if(!reduced) document.querySelector('.scene').classList.add('flash');
 }
 game.addEventListener('click',e=>{
@@ -224,9 +242,9 @@ game.addEventListener('click',e=>{
 });
 restart.onclick=()=>{reset.returnValue='cancel';reset.showModal();};
 reset.addEventListener('close',()=>{if(reset.returnValue==='restart')begin();});
-motion.onclick=()=>{reduced=!reduced;syncMotion();};
+motion.onclick=()=>{reduced=!reduced;syncMotion();draw(performance.now(), true);};
 function syncMotion(){motion.textContent=reduced?'Motion reduced':'Motion full';motion.setAttribute('aria-pressed',String(reduced));}
-preference.addEventListener('change',e=>{reduced=e.matches;syncMotion();});
+preference.addEventListener('change',e=>{reduced=e.matches;syncMotion();draw(performance.now(), true);});
 sound.onclick=async()=>{
   if(!audio){
     const Context=window.AudioContext||window.webkitAudioContext;
@@ -251,11 +269,15 @@ function shutter() {
   tone.connect(gain);gain.connect(master);tone.start(now);tone.stop(now+.1);
 }
 
-function draw(now) {
-  if(!display)return;
-  const t=reduced?1:now/1000;
-  if (age === 9) rooms.childhood(t);
-  else rooms.later(t, age === 25, chapter === 'room');
+function draw(now, refreshRoom = false) {
+  if (!display) return;
+  // Keep the viewfinder responsive without redrawing every paper layer on every frame.
+  if (refreshRoom || (!reduced && now - lastRoomPaint >= 30)) {
+    const t = reduced ? 1 : now / 1000;
+    if (age === 9) rooms.childhood(t);
+    else rooms.later(t, age === 25, chapter === 'room');
+    lastRoomPaint = now;
+  }
   const context=display.getContext('2d');
   context.drawImage(world,0,0);
   if(!display.classList.contains('camera'))return;
@@ -274,8 +296,9 @@ function draw(now) {
 function loop(now) {
   requestAnimationFrame(loop);
   if (now - lastPaint < 15) return;
+  if (!display || (!pointerGoal && (reduced || now - lastRoomPaint < 30))) return;
   if (pointerGoal) {
-    const blend = reduced ? 1 : 1 - Math.exp(-(now - lastPaint) / 48);
+    const blend = reduced ? 1 : 1 - Math.exp(-Math.min(now - lastPaint, 24) / 48);
     aim.x += (pointerGoal.x - aim.x) * blend;
     aim.y += (pointerGoal.y - aim.y) * blend;
     if (Math.hypot(pointerGoal.x - aim.x, pointerGoal.y - aim.y) < .5) {
