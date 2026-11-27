@@ -98,7 +98,7 @@ body[data-chapter="present"] main {
   border-radius: 0;
 }
 .camera-stage canvas {
-  width: min(100%, max(280px, calc((100svh - 320px) * 1.8)));
+  width: min(100%, max(280px, calc((100svh - 385px) * 1.8)));
   height: auto;
   image-rendering: auto;
 }
@@ -124,9 +124,70 @@ body[data-chapter="present"] main {
 @media (max-width: 600px) {
   .camera-controls { grid-template-columns: minmax(0, 1fr); }
   .camera-stage canvas {
-    width: min(100%, max(220px, calc((100svh - 360px) * 1.8)));
+    width: min(100%, max(220px, calc((100svh - 430px) * 1.8)));
   }
   .camera-controls { gap: 6px; padding-block: 10px; }
   .camera-heading h2 { font-size: 1.55rem; }
   .camera-controls .moments button { font-size: .83rem; padding-inline: 9px; }
 }
+
+
+body[data-chapter="title"] header { justify-content: flex-end; }
+body[data-chapter="title"] .brand { display: none; }
+.title-page { max-width: 640px; margin: 0 auto; }
+.title-page .scene { margin-bottom: 20px; }
+.title-page canvas { image-rendering: auto; }
+.title-page h1 { margin-bottom: 8px; }
+.camera-controls .film { flex-wrap: nowrap; overflow-x: auto; }
+.camera-controls .film button { flex: 0 0 auto; }
+.camera-controls .note { margin-bottom: 0; }
+
+/* Compact-camera playback. The saved image is shown without a color filter. */
+.playback {
+  --panel: #354847;
+  --edge: #708983;
+  --accent: #c4dfaa;
+  --muted: #d0dbd3;
+  align-items: start;
+  gap: 24px;
+  background: #273535;
+  border: 1px solid #657876;
+  padding: clamp(10px, 2vw, 24px);
+}
+.playback-display {
+  color: #e7f0e4;
+  background: #111c1b;
+  border: 1px solid #839994;
+  padding: 9px;
+}
+.playback-status {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 4px 10px;
+  text-transform: uppercase;
+  font: .85rem ui-monospace, monospace;
+  letter-spacing: .08em;
+  color: #c4dfaa;
+}
+.playback-display img {
+  border: 1px solid #516764;
+  image-rendering: auto;
+}
+.playback-display figcaption {
+  font: 1rem/1.5 ui-monospace, monospace;
+  padding: 12px 5px 4px;
+}
+.playback h2, .playback .eyebrow, .playback .tabs button {
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0;
+}
+.playback h2 { font-size: clamp(1.35rem, 3vw, 2rem); }
+.playback .film button {
+  background: #111c1b;
+  border-color: #708983;
+}
+.playback .film button.on {
+  border-color: #c4dfaa;
+  outline-color: #c4dfaa;
+}
+.playback .film button.seen::after { background: #c4dfaa; }
