@@ -298,7 +298,7 @@ function loop(now) {
   if (now - lastPaint < 15) return;
   if (!display || (!pointerGoal && (reduced || now - lastRoomPaint < 30))) return;
   if (pointerGoal) {
-    const blend = reduced ? 1 : 1 - Math.exp(-Math.min(now - lastPaint, 24) / 48);
+    const blend = reduced ? 1 : 1 - Math.exp(-Math.min(now - lastPaint, 24) / 30);
     aim.x += (pointerGoal.x - aim.x) * blend;
     aim.y += (pointerGoal.y - aim.y) * blend;
     if (Math.hypot(pointerGoal.x - aim.x, pointerGoal.y - aim.y) < .5) {
